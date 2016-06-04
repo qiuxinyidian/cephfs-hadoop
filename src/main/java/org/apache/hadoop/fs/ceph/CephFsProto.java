@@ -50,6 +50,7 @@ abstract class CephFsProto {
   abstract String[] listdir(Path path) throws IOException;
   abstract void setattr(Path path, CephStat stat, int mask) throws IOException;
   abstract void chmod(Path path, int mode) throws IOException;
+  abstract void chown(Path path, String username, String groupname) throws IOException;
   abstract long lseek(int fd, long offset, int whence) throws IOException;
   abstract void close(int fd) throws IOException;
   abstract void shutdown() throws IOException;
@@ -67,4 +68,6 @@ abstract class CephFsProto {
   abstract Bucket[] get_osd_crush_location(int osd) throws IOException;
   abstract CephFileExtent get_file_extent(int fd, long offset) throws IOException;
   abstract void fsync(int fd) throws IOException;
+  abstract String getUsername(int uid) throws IOException;
+  abstract String getGroupname(int gid) throws IOException;
 }

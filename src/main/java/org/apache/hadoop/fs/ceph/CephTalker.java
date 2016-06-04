@@ -255,6 +255,10 @@ class CephTalker extends CephFsProto {
     mount.chmod(pathString(path), mode);
   }
 
+  void chown(Path path, String username, String groupname) throws IOException {
+    mount.chown(pathString(path), username, groupname);
+  }
+
   void shutdown() throws IOException {
     if (null != mount)
       mount.unmount();
@@ -342,5 +346,13 @@ class CephTalker extends CephFsProto {
 
   CephFileExtent get_file_extent(int fd, long offset) throws IOException {
     return mount.get_file_extent(fd, offset);
+  }
+
+  String getUsername(int uid) throws IOException {
+    return mount.get_username(uid);
+  }
+
+  String getGroupname(int gid) throws IOException {
+    return mount.get_groupname(gid);
   }
 }

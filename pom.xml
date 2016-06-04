@@ -94,6 +94,8 @@
         <groupId>com.ceph</groupId>
         <artifactId>libcephfs</artifactId>
         <version>${libcephfs.version}</version>
+	<scope>system</scope>
+	<systemPath>${project.basedir}/src/main/resources/libcephfs.jar</systemPath>
       </dependency>
     </dependencies>
 

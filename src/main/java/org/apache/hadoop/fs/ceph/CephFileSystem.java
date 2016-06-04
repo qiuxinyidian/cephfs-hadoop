@@ -224,10 +224,23 @@ public class CephFileSystem extends FileSystem {
     CephStat stat = new CephStat();
     ceph.lstat(path, stat);
 
+    String username = null;
+    String groupname = null;
+
+    username = ceph.getUsername(stat.uid);
+    if (username == null) {
+      username = "" + stat.uid;
+    }
+
+    groupname = ceph.getGroupname(stat.gid);
+    if (groupname == null) {
+      groupname = "" + stat.gid;
+    }
+
     FileStatus status = new FileStatus(stat.size, stat.isDir(),
           ceph.get_file_replication(path), stat.blksize, stat.m_time,
           stat.a_time, new FsPermission((short) stat.mode),
-          System.getProperty("user.name"), null, path.makeQualified(this));
+          username, groupname, path.makeQualified(this));
 
     return status;
   }
@@ -260,6 +273,12 @@ public class CephFileSystem extends FileSystem {
   public void setPermission(Path path, FsPermission permission) throws IOException {
     path = makeAbsolute(path);
     ceph.chmod(path, permission.toShort());
+  }
+
+  @Override
+  public void setOwner(Path path, String username, String groupname) throws IOException {
+    path = makeAbsolute(path);
+    ceph.chown(path, username, groupname);
   }
 
   @Override
