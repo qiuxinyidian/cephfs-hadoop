@@ -266,7 +266,8 @@ public class CephFileSystem extends FileSystem {
     if (isFile(path))
       return new FileStatus[] { getFileStatus(path) };
 
-    return null;
+    // instead return null, we return zero length array of FileStatus
+    return new FileStatus[0];
   }
 
   @Override
@@ -671,4 +672,7 @@ public class CephFileSystem extends FileSystem {
 	  return status;
   }
 
+  public int getDefaultPort() {
+    return 6789;
   }
+}
