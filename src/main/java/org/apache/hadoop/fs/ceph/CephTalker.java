@@ -227,6 +227,10 @@ class CephTalker extends CephFsProto {
     mount.unlink(pathString(path));
   }
 
+  void truncate(Path path, long newLength) throws IOException {
+    mount.truncate(pathString(path),newLength);
+  }
+
   void rename(Path src, Path dst) throws IOException {
     mount.rename(pathString(src), pathString(dst));
   }
