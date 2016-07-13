@@ -152,6 +152,13 @@ class CephTalker extends CephFsProto {
         CephConfigKeys.CEPH_LOCALIZE_READS_DEFAULT);
     mount.localize_reads(localizeReads);
 
+    /* set client_permissions */
+    String ceph_client_permissions = conf.get(
+        CephConfigKeys.CEPH_CLIENT_PERMISSIONS_KEY,
+        CephConfigKeys.CEPH_CLIENT_PERMISSIONS_DEFAULT);
+    mount.conf_set("client_permissions", ceph_client_permissions);
+
+
     mount.chdir("/");
   }
 

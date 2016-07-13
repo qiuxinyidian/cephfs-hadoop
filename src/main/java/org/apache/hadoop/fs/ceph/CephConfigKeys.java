@@ -54,5 +54,8 @@ public class CephConfigKeys extends CommonConfigurationKeys {
   public static final String CEPH_AUTH_KEYRING_DEFAULT = null;
 
   public static final String CEPH_MON_ADDR_KEY = "ceph.mon.address";
-  public static final String CEPH_MON_ADDR_DEFAULT = null;
+  public static final String CEPH_MON_ADDR_DEFAULT = null;
+
+  public static final String CEPH_CLIENT_PERMISSIONS_KEY = "ceph.client.permissions";
+  public static final String CEPH_CLIENT_PERMISSIONS_DEFAULT = "true";
 }
