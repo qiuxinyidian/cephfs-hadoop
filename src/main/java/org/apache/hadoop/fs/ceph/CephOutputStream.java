@@ -85,7 +85,7 @@ public class CephOutputStream extends OutputStream {
    */
   private synchronized void checkOpen() throws IOException {
     if (closed)
-      throw new IOException("operation on closed stream (fd=" + fileHandle + ")");
+      throw new IOException("houbin: operation on closed stream (fd=" + fileHandle + ")");
   }
 
   /**
@@ -165,7 +165,15 @@ public class CephOutputStream extends OutputStream {
   
   @Override
   public synchronized void close() throws IOException {
-    checkOpen();
+    // In hive, outputstream will be closed repeatly. So return when catched exception.
+    try {
+      checkOpen();
+    }
+    catch(IOException e) {
+      LOG.warn("outputstream already closed, fd is " + fileHandle);
+      return;
+    }
+
     flush();
     ceph.close(fileHandle);
     closed = true;
