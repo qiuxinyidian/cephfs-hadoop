@@ -90,6 +90,9 @@ class CephTalker extends CephFsProto {
     if (keyring != null)
       mount.conf_set("keyring", keyring);
 
+    /* set hadoop root user */
+    mount.conf_set("client_extra_root_users", "true");
+
     /* Set monitor */
     String mon_addr = null;
     String mon_host = uri.getHost();
@@ -157,7 +160,6 @@ class CephTalker extends CephFsProto {
         CephConfigKeys.CEPH_CLIENT_PERMISSIONS_KEY,
         CephConfigKeys.CEPH_CLIENT_PERMISSIONS_DEFAULT);
     mount.conf_set("client_permissions", ceph_client_permissions);
-
 
     mount.chdir("/");
   }
