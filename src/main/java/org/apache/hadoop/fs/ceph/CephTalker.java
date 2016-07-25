@@ -304,6 +304,22 @@ class CephTalker extends CephFsProto {
     mount.setattr(pathString(path), stat, mask);
   }
 
+  void setxattr(Path path,String name, byte[] value,int mask) throws IOException{
+    mount.setxattr(pathString(path), name, value, value.length, mask);
+  }
+
+  long getxattr(Path path,String name, byte[] value) throws IOException{
+    long attr1_len = mount.getxattr(pathString(path), name, value);
+    return attr1_len;
+  }
+
+  String[] listxattr(Path path) throws IOException{
+    return mount.listxattr(pathString(path));
+  }
+  void removexattr(Path path, String name) throws IOException{
+    mount.removexattr(pathString(path), name);
+  }
+
   void fsync(int fd) throws IOException {
     mount.fsync(fd, false);
   }

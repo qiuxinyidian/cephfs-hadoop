@@ -695,4 +695,88 @@ public class CephFileSystem extends FileSystem {
   public int getDefaultPort() {
     return 6789;
   }
+    @Deprecated
+  public void setXAttr(Path path, String name, byte[] value,EnumSet<XAttrSetFlag> flag)
+      throws IOException {
+    int mask = 0;
+    if(flag.contains(XAttrSetFlag.CREATE)&& flag.contains(XAttrSetFlag.REPLACE))
+    {
+       String[] xattrs = ceph.listxattr(path);
+       List<String> tempList = Arrays.asList(xattrs);
+       if(tempList.contains(name)) {
+         mask =2;
+         ceph.setxattr(path, name, value, mask);
+       }
+       else {
+         mask =1;
+         ceph.setxattr(path, name, value, mask);
+       }
+    }
+    else if(flag.contains(XAttrSetFlag.CREATE))
+    {
+       String[] xattrs = ceph.listxattr(path);
+       List<String> tempList = Arrays.asList(xattrs);
+       if(tempList.contains(name)) {
+         throw new IOException("the xattr exists already in the file!");
+       }
+       else {
+         mask = 1;
+         ceph.setxattr(path, name, value, mask);
+      }
+    }
+    else if (flag.contains(XAttrSetFlag.REPLACE))
+    {
+       String[] xattrs = ceph.listxattr(path);
+       List<String> tempList = Arrays.asList(xattrs);
+       if(tempList.contains(name)) {
+          mask = 2;
+          ceph.setxattr(path, name, value, mask);
+       }
+       else
+          throw new IOException("the xattr does not exist in the file!");
+    }
+  }
+
+  public byte[] getXAttr(Path path, String name) throws IOException {
+    String[] xattrs = ceph.listxattr(path);
+    List<String> tempList = Arrays.asList(xattrs);
+    if(tempList.contains(name)) {
+      long attr1_len = ceph.getxattr(path, name, null);
+      byte[] out = new byte[(int)attr1_len];
+      ceph.getxattr(path, name, out);
+      return out ;
+    }
+    else
+      throw new IOException("the xattr does not exist in the file!");
+  }
+
+  public Map<String, byte[]> getXAttrs(Path path) throws IOException {
+    Map<String, byte[]> getxattrs = new HashMap<String , byte[]>();
+    long attr_len;
+    byte[] value;
+    String[] xattrs = ceph.listxattr(path);
+    for(int i=0;i<xattrs.length;i++)
+    {
+      attr_len = ceph.getxattr(path, xattrs[i], null);
+      value = new byte[(int)attr_len];
+      ceph.getxattr(path, xattrs[i], value);
+      getxattrs.put(xattrs[i],value);
+    }
+    return getxattrs;
+  }
+  
+  public List<String> listXAttrs(Path path) throws IOException {
+    String[] xattrs = ceph.listxattr(path);
+    List<String> xattrsList = Arrays.asList(xattrs);
+    return xattrsList;
+  }
+  
+  public void removeXAttr(Path path, String name) throws IOException {
+    String[] xattrs = ceph.listxattr(path);
+    List<String> tempList = Arrays.asList(xattrs);
+    if(tempList.contains(name))
+      ceph.removexattr(path, name);
+    else
+      throw new IOException("the xattr does not exist  in the file!");
+  }
 }
