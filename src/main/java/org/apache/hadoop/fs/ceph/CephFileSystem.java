@@ -695,8 +695,9 @@ public class CephFileSystem extends FileSystem {
   public int getDefaultPort() {
     return 6789;
   }
-    @Deprecated
-  public void setXAttr(Path path, String name, byte[] value,EnumSet<XAttrSetFlag> flag)
+ 
+  @Deprecated
+  public void setXAttr(Path path, String name, byte[] value, EnumSet<XAttrSetFlag> flag)
       throws IOException {
     int mask = 0;
     if(flag.contains(XAttrSetFlag.CREATE)&& flag.contains(XAttrSetFlag.REPLACE))
@@ -760,7 +761,7 @@ public class CephFileSystem extends FileSystem {
       attr_len = ceph.getxattr(path, xattrs[i], null);
       value = new byte[(int)attr_len];
       ceph.getxattr(path, xattrs[i], value);
-      getxattrs.put(xattrs[i],value);
+      getxattrs.put(xattrs[i], value);
     }
     return getxattrs;
   }
