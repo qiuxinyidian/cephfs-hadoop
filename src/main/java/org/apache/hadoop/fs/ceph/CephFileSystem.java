@@ -651,22 +651,22 @@ public class CephFileSystem extends FileSystem {
 
   @Deprecated
   public boolean truncate(Path path, long newLength) throws IOException {
-	  path = makeAbsolute(path);
+    path = makeAbsolute(path);
 
-	    /* path exists? */
-	    FileStatus status;
-	    try {
-	      status = getFileStatus(path);
-	    } catch (FileNotFoundException e) {
-	      return false;
-	    }
+    /* path exists? */
+    FileStatus status;
+    try {
+      status = getFileStatus(path);
+    } catch (FileNotFoundException e) {
+      return false;
+    }
 
-	    /* we're done if its a file */
-	    if (!status.isDir()) {
-	      ceph.truncate(path,newLength);
-	      return true;
-	    }
-		return false;  
+    /* we're done if its a file */
+    if (!status.isDir()) {
+      ceph.truncate(path, newLength);
+      return true;
+    }
+    return false;  
   }
 
   @Override
