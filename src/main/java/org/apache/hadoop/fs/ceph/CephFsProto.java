@@ -46,6 +46,7 @@ abstract class CephFsProto {
   abstract void lstat(Path path, CephStat stat) throws IOException;
   abstract void statfs(Path path, CephStatVFS stat) throws IOException;
   abstract void unlink(Path path) throws IOException;
+  abstract void truncate(Path path, long newLength) throws IOException;
   abstract void rmdir(Path path) throws IOException;
   abstract String[] listdir(Path path) throws IOException;
   abstract void setattr(Path path, CephStat stat, int mask) throws IOException;
