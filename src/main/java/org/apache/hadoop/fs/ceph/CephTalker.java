@@ -42,10 +42,15 @@ import com.ceph.fs.CephFileExtent;
 
 class CephTalker extends CephFsProto {
 
+  private static final Log LOG;
+
   private CephMount mount;
   private short defaultReplication;
 
+  private boolean talkerDebug;
+
   public CephTalker(Configuration conf, Log log) {
+    LOG = log;
     mount = null;
   }
 
@@ -57,6 +62,10 @@ class CephTalker extends CephFsProto {
   }
 
   void initialize(URI uri, Configuration conf) throws IOException {
+    talkerDebug = conf.get(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
+                           CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
+    if (talkerDebug)
+      LOG.info("[talker debug]: initialize, uri " + uri.toString() + ", coff " + conf.toString());
 
     /*
      * Create mount with auth user id
@@ -179,7 +188,14 @@ class CephTalker extends CephFsProto {
    * this case.
    */
   int open(Path path, int flags, int mode) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: open, path " + pathString(path) + ", flag " + flags + ", mode " + mode);
+    
     int fd = __open(path, flags, mode);
+
+    if (talkerDebug)
+      LOG.info("[talker debug]: open, fd " + fd);
+
     CephStat stat = new CephStat();
     fstat(fd, stat);
     if (stat.isDir()) {
@@ -195,8 +211,18 @@ class CephTalker extends CephFsProto {
    */
   int open(Path path, int flags, int mode, int stripe_unit, int stripe_count,
       int object_size, String data_pool) throws IOException {
+      
+    if (talkerDebug)
+      LOG.info("[talker debug]: open, path " + pathString(path) + ", flag " + flags + ", mode " + mode +
+               "strip_unit " + stripe_unit + ", stripe_count " + stripe_count + ", object_size " + 
+               object_size + ", data_pool " + data_pool);
+
     int fd = mount.open(pathString(path), flags, mode, stripe_unit,
         stripe_count, object_size, data_pool);
+
+    if (talkerDebug)
+      LOG.info("[talker debug]: open, fd " + fd);
+    
     CephStat stat = new CephStat();
     fstat(fd, stat);
     if (stat.isDir()) {
@@ -208,11 +234,17 @@ class CephTalker extends CephFsProto {
 
 
   void fstat(int fd, CephStat stat) throws IOException {
+    
+    if (talkerDebug)
+      LOG.info("[talker debug]: fstat, fd " + fd);  
+    
     mount.fstat(fd, stat);
   }
 
   void lstat(Path path, CephStat stat) throws IOException {
     try {
+      if (talkerDebug)
+        LOG.info("[talker debug]: lstat, path " + pathString(path));  
       mount.lstat(pathString(path), stat);
     } catch (CephNotDirectoryException e) {
       throw new FileNotFoundException();
@@ -221,6 +253,8 @@ class CephTalker extends CephFsProto {
 
   void statfs(Path path, CephStatVFS stat) throws IOException {
 	  try {
+     if (talkerDebug)
+        LOG.info("[talker debug]: statfs, path " + pathString(path)); 
 		  mount.statfs(pathString(path), stat);
 	  } catch (FileNotFoundException e) {
 		  throw new FileNotFoundException();
@@ -229,22 +263,32 @@ class CephTalker extends CephFsProto {
   }
   
   void rmdir(Path path) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: rmdir, path " + pathString(path)); 
     mount.rmdir(pathString(path));
   }
 
   void unlink(Path path) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: unlink, path " + pathString(path)); 
     mount.unlink(pathString(path));
   }
 
   void truncate(Path path, long newLength) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: truncate, path " + pathString(path) + ", newLength " + newLength); 
     mount.truncate(pathString(path),newLength);
   }
 
   void rename(Path src, Path dst) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: rename, src " + pathString(src) + ", dst " + pathString(dst)); 
     mount.rename(pathString(src), pathString(dst));
   }
 
   String[] listdir(Path path) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: listdir, path " + pathString(path));     
     CephStat stat = new CephStat();
     try {
       mount.lstat(pathString(path), stat);
@@ -257,32 +301,47 @@ class CephTalker extends CephFsProto {
   }
 
   void mkdirs(Path path, int mode) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: mkdirs, path " + pathString(path) + ", mode " + mode);  
     mount.mkdirs(pathString(path), mode);
   }
 
   void close(int fd) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: close, fd " + fd);  
     mount.close(fd);
   }
 
   void chmod(Path path, int mode) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: chmod, path " + pathString(path) + ", mode " + mode); 
     mount.chmod(pathString(path), mode);
   }
 
   void chown(Path path, String username, String groupname) throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: chown, path " + pathString(path) + ", username " + username +
+               ", groupname " + groupname); 
     mount.chown(pathString(path), username, groupname);
   }
 
   void shutdown() throws IOException {
+   if (talkerDebug)
+      LOG.info("[talker debug]: shutdown");
     if (null != mount)
       mount.unmount();
     mount = null;
   }
 
   short getDefaultReplication() {
+    if (talkerDebug)
+      LOG.info("[talker debug]: getDefaultReplication " + defaultReplication);
     return defaultReplication;
   }
 
   short get_file_replication(Path path) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_file_replication, path " + pathString(path));
     CephStat stat = new CephStat();
     mount.lstat(pathString(path), stat);
     int replication = 1;
@@ -306,34 +365,51 @@ class CephTalker extends CephFsProto {
   }
 
   int get_stripe_unit_granularity() {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_stripe_unit_granularity");
     return mount.get_stripe_unit_granularity();
   }
 
   void setattr(Path path, CephStat stat, int mask) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: setattr, path " + pathString(path) + ", mask " + mask);
     mount.setattr(pathString(path), stat, mask);
   }
 
   void fsync(int fd) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: fsync, fd " + fd);
     mount.fsync(fd, false);
   }
 
   long lseek(int fd, long offset, int whence) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: lseek, fd " + fd + ", offset " + offset + ", whence " + whence);
     return mount.lseek(fd, offset, whence);
   }
 
   int write(int fd, byte[] buf, long size, long offset) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: write, fd " + fd + ", size " + size + ", offset " + offset);
+
     return (int)mount.write(fd, buf, size, offset);
   }
 
   int read(int fd, byte[] buf, long size, long offset) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: read, fd " + fd + ", size " + size + ", offset " + offset);
     return (int)mount.read(fd, buf, size, offset);
   }
 
   String get_file_pool_name(int fd) {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_file_pool_name, fd " + fd);
     return mount.get_file_pool_name(fd);
   }
 
   int get_pool_id(String pool_name) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_pool_id, pool_name " + pool_name);
     try {
       return mount.get_pool_id(pool_name);
     } catch (CephPoolException e) {
@@ -342,6 +418,8 @@ class CephTalker extends CephFsProto {
   }
 
   int get_pool_replication(int poolid) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_pool_replication, poolid " + poolid);
     try {
       return mount.get_pool_replication(poolid);
     } catch (CephPoolException e) {
@@ -350,14 +428,20 @@ class CephTalker extends CephFsProto {
   }
 
   InetAddress get_osd_address(int osd) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_osd_address, osd " + osd);
     return mount.get_osd_address(osd);
   }
 
   Bucket[] get_osd_crush_location(int osd) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_osd_crush_location, osd " + osd);
     return mount.get_osd_crush_location(osd);
   }
 
   CephFileExtent get_file_extent(int fd, long offset) throws IOException {
+    if (talkerDebug)
+      LOG.info("[talker debug]: get_file_extent, fd " + fd + ", offset " + offset);
     return mount.get_file_extent(fd, offset);
   }
 

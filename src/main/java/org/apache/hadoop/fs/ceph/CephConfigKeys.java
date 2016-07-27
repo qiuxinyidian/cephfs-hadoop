@@ -58,4 +58,7 @@ public class CephConfigKeys extends CommonConfigurationKeys {
 
   public static final String CEPH_CLIENT_PERMISSIONS_KEY = "ceph.client.permissions";
   public static final String CEPH_CLIENT_PERMISSIONS_DEFAULT = "true";
+
+  public static final String CEPH_TALKER_INTERFACE_DEBUG_KEY = "ceph.talker.debug";
+  public static final boolean CEPH_TALKER_INTERFACE_DEBUG_DEFAULT = false;
 }
