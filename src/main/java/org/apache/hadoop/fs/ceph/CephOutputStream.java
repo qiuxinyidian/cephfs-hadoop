@@ -170,7 +170,7 @@ public class CephOutputStream extends OutputStream {
       checkOpen();
     }
     catch(IOException e) {
-      LOG.warn("outputstream already closed, fd is " + fileHandle);
+      LOG.debug("outputstream already closed, fd is " + fileHandle);
       return;
     }
 

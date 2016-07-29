@@ -42,7 +42,7 @@ import com.ceph.fs.CephFileExtent;
 
 class CephTalker extends CephFsProto {
 
-  private static final Log LOG;
+  private final Log LOG;
 
   private CephMount mount;
   private short defaultReplication;
@@ -62,7 +62,7 @@ class CephTalker extends CephFsProto {
   }
 
   void initialize(URI uri, Configuration conf) throws IOException {
-    talkerDebug = conf.get(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
+    talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
                            CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
     if (talkerDebug)
       LOG.info("[talker debug]: initialize, uri " + uri.toString() + ", coff " + conf.toString());

@@ -694,8 +694,7 @@ public class CephFileSystem extends FileSystem {
   
   @Override
   public boolean setReplication(Path src, short replication) throws IOException {
-    throw new UnsupportedOperationException(getClass().getSimpleName()
-        + " doesn't support setReplication");
+    return false;
   }
 
   public int getDefaultPort() {
