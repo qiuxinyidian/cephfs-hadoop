@@ -61,4 +61,7 @@ public class CephConfigKeys extends CommonConfigurationKeys {
 
   public static final String CEPH_TALKER_INTERFACE_DEBUG_KEY = "ceph.talker.debug";
   public static final boolean CEPH_TALKER_INTERFACE_DEBUG_DEFAULT = false;
+ 
+  public static final String CEPH_TALKER_INTERFACE_STACK_KEY = "ceph.talker.stack";
+  public static final boolean CEPH_TALKER_INTERFACE_STACK_DEFAULT = false;
 }

@@ -48,6 +48,7 @@ class CephTalker extends CephFsProto {
   private short defaultReplication;
 
   private boolean talkerDebug;
+  private boolean talkerStack;
 
   public CephTalker(Configuration conf, Log log) {
     LOG = log;
@@ -66,6 +67,11 @@ class CephTalker extends CephFsProto {
                            CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
     if (talkerDebug)
       LOG.info("[talker debug]: initialize, uri " + uri.toString() + ", coff " + conf.toString());
+    
+    talkerStack = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_STACK_KEY,
+                           CephConfigKeys.CEPH_TALKER_INTERFACE_STACK_DEFAULT);
+    if (talkerStack)
+      LOG.info("[talker stack]: initialize, uri " + uri.toString() + ", conf " + conf.toString());
 
     /*
      * Create mount with auth user id
@@ -171,6 +177,20 @@ class CephTalker extends CephFsProto {
     mount.conf_set("client_permissions", ceph_client_permissions);
 
     mount.chdir("/");
+  }
+  
+  /*
+   * Get Function Call Stack
+   */
+  void call_stack(String call_function) throws IOException {
+      StringBuilder sb = new StringBuilder("");
+      Exception e = new Exception(call_function);
+      StackTraceElement[] trace = e.getStackTrace();
+      for(int i = 1; i < trace.length; i++)
+      {
+        sb.append("\tat " + trace[i] + "\n"); 
+      }
+      LOG.info("[talker " + call_function + " Call Stack]: "+ "  There is no Error, the Call Stack is: \n" + sb.toString()); 
   }
 
   /*
@@ -391,6 +411,11 @@ class CephTalker extends CephFsProto {
   int write(int fd, byte[] buf, long size, long offset) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: write, fd " + fd + ", size " + size + ", offset " + offset);
+    
+    if (talkerStack)
+    {
+      call_stack("write function");
+    }
 
     return (int)mount.write(fd, buf, size, offset);
   }
@@ -398,6 +423,11 @@ class CephTalker extends CephFsProto {
   int read(int fd, byte[] buf, long size, long offset) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: read, fd " + fd + ", size " + size + ", offset " + offset);
+    
+    if (talkerStack)
+    {
+      call_stack("write function");
+    }
     return (int)mount.read(fd, buf, size, offset);
   }
 
