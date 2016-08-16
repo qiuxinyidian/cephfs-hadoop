@@ -29,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.Progressable;
+import org.apache.hadoop.fs.Syncable;
 
 import com.ceph.fs.CephMount;
 
@@ -43,7 +44,8 @@ import com.ceph.fs.CephMount;
  *  libcephfs. Currently it might be useful to reduce JNI crossings, but not
  *  much more.
  */
-public class CephOutputStream extends OutputStream {
+public class CephOutputStream extends OutputStream 
+	implements Syncable {
   private static final Log LOG = LogFactory.getLog(CephOutputStream.class);
   private boolean closed;
 
@@ -53,6 +55,8 @@ public class CephOutputStream extends OutputStream {
 
   private byte[] buffer;
   private int bufUsed = 0;
+  
+  private boolean talkerDebug;
 
   /**
    * Construct the CephOutputStream.
@@ -65,6 +69,10 @@ public class CephOutputStream extends OutputStream {
     fileHandle = fh;
     closed = false;
     buffer = new byte[1<<21];
+    talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
+                           CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: initialize, coff " + conf.toString()); 
   }
 
   /**
@@ -154,8 +162,30 @@ public class CephOutputStream extends OutputStream {
     }
 
     assert(bufUsed == 0);
+  } 
+
+  private void flushOrSync(boolean if_sync)
+      throws IOException {
+    checkOpen();
+    flushBuffer(); // buffer -> libcephfs
+    if (if_sync)
+    	ceph.fsync(fileHandle); // libcephfs -> cluster 
   }
-   
+
+  @Override
+  public void hflush() throws IOException {
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: hflush function, flush data to buffer");
+    flushOrSync(false); 
+  } 
+
+  @Override
+  public void hsync() throws IOException {
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: hsync function, flush and sync data to buffer or ceph");
+    flushOrSync(true);
+  }
+  
   @Override
   public synchronized void flush() throws IOException {
     checkOpen();

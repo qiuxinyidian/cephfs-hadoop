@@ -399,7 +399,15 @@ class CephTalker extends CephFsProto {
   void fsync(int fd) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: fsync, fd " + fd);
+    if (talkerDebug)
+      LOG.info("[talker debug]: fsync begin, fd " + fd); 
+    if (talkerStack)
+    {
+      call_stack("#####################fync_function######################");
+    }
     mount.fsync(fd, false);
+    if (talkerDebug)
+      LOG.info("[talker debug]: fsync end, fd " + fd);
   }
 
   long lseek(int fd, long offset, int whence) throws IOException {
@@ -410,8 +418,7 @@ class CephTalker extends CephFsProto {
 
   int write(int fd, byte[] buf, long size, long offset) throws IOException {
     if (talkerDebug)
-      LOG.info("[talker debug]: write, fd " + fd + ", size " + size + ", offset " + offset);
-    
+      LOG.info("[talker debug]: write, fd " + fd + ", size " + size + ", offset " + offset);    
     if (talkerStack)
     {
       call_stack("write function");
@@ -426,7 +433,7 @@ class CephTalker extends CephFsProto {
     
     if (talkerStack)
     {
-      call_stack("write function");
+      call_stack("read function");
     }
     return (int)mount.read(fd, buf, size, offset);
   }
