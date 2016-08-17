@@ -465,9 +465,9 @@ public class CephFileSystem extends FileSystem {
      * replication factor, in order to achieve a requested replication factor,
      * we must select an appropriate data pool to place the file into.
      */
-    String datapool = selectDataPool(path, replication);
+    //String datapool = selectDataPool(path, replication);
     int fd = ceph.open(path, flags, (int)permission.toShort(), (int)blockSize,
-        CEPH_STRIPE_COUNT, (int)blockSize, datapool);
+        CEPH_STRIPE_COUNT, (int)blockSize, null);
 
     if (progress != null) {
       progress.progress();
