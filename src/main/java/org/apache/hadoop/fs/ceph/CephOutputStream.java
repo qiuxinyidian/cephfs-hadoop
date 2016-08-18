@@ -169,7 +169,7 @@ public class CephOutputStream extends OutputStream
     checkOpen();
     flushBuffer(); // buffer -> libcephfs
     if (if_sync)
-    	ceph.fsync(fileHandle); // libcephfs -> cluster 
+      ceph.fsync(fileHandle); // libcephfs -> cluster 
   }
 
   @Override
@@ -190,12 +190,12 @@ public class CephOutputStream extends OutputStream
   public synchronized void flush() throws IOException {
     checkOpen();
     flushBuffer(); // buffer -> libcephfs
-    ceph.fsync(fileHandle); // libcephfs -> cluster
+    //ceph.fsync(fileHandle); // libcephfs -> cluster
   }
   
   @Override
   public synchronized void close() throws IOException {
-    // In hive, outputstream will be closed repeatly. So return when catched exception.
+    // In hive, outputstream will be closed twice. So return when catched exception.
     try {
       checkOpen();
     }
@@ -204,7 +204,7 @@ public class CephOutputStream extends OutputStream
       return;
     }
 
-    flush();
+    hsync();
     ceph.close(fileHandle);
     closed = true;
   }
