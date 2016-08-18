@@ -175,21 +175,24 @@ public class CephOutputStream extends OutputStream
   @Override
   public void hflush() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hflush function, flush data to buffer");
+      LOG.info("[OutputStream debug]: hflush, fd " + fileHandle);
     flushOrSync(false); 
   } 
 
   @Override
   public void hsync() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hsync function, flush and sync data to buffer or ceph");
+      LOG.info("[OutputStream debug]: hsync start, fd " + fileHandle);
     flushOrSync(true);
+
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: hsync end, fd " + fileHandle);
   }
   
   @Override
   public synchronized void flush() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hsync function, flush and sync data to buffer or ceph");
+      LOG.info("[OutputStream debug]: flush, fd " + fileHandle);
     checkOpen();
     flushBuffer(); // buffer -> libcephfs
     //ceph.fsync(fileHandle); // libcephfs -> cluster
