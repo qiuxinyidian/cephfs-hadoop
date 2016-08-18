@@ -188,6 +188,8 @@ public class CephOutputStream extends OutputStream
   
   @Override
   public synchronized void flush() throws IOException {
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: hsync function, flush and sync data to buffer or ceph");
     checkOpen();
     flushBuffer(); // buffer -> libcephfs
     //ceph.fsync(fileHandle); // libcephfs -> cluster
