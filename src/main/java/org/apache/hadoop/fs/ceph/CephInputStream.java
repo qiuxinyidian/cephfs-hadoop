@@ -43,6 +43,8 @@ public class CephInputStream extends FSInputStream {
 
   private long fileLength;
 
+  private boolean talkerDebug;
+
   private CephFsProto ceph;
 
   private byte[] buffer;
@@ -66,6 +68,9 @@ public class CephInputStream extends FSInputStream {
     closed = false;
     ceph = cephfs;
     buffer = new byte[1<<21];
+
+    talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
+                       CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
     LOG.debug(
         "CephInputStream constructor: initializing stream with fh " + fh
         + " and file length " + flength);
@@ -86,6 +91,10 @@ public class CephInputStream extends FSInputStream {
   }
 
   private synchronized boolean fillBuffer() throws IOException {
+    if (talkerDebug) {
+      LOG.info("[talker debug]: ceph read begin, fd " + fileHandle + ", ceph pos " + cephPos); 
+    }
+    
     bufValid = ceph.read(fileHandle, buffer, buffer.length, -1);
     bufPos = 0;
     if (bufValid < 0) {
@@ -96,7 +105,12 @@ public class CephInputStream extends FSInputStream {
       ceph.lseek(fileHandle, cephPos, CephMount.SEEK_SET);
       throw new IOException("Failed to fill read buffer! Error code:" + err);
     }
+    
     cephPos += bufValid;
+    if (talkerDebug) {
+      LOG.info("[talker debug]: ceph read end, fd " + fileHandle + ", ceph pos " + cephPos); 
+    }
+    
     return (bufValid != 0);
   }
 
@@ -128,12 +142,22 @@ public class CephInputStream extends FSInputStream {
     }
     long oldPos = cephPos;
 
+    if (talkerDebug){
+      LOG.info("[talker debug]: seek begin, fd " + fileHandle+ ", target pos " + targetPos 
+        + ", old ceph pos " + oldPos);
+    }
+
     cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
     bufValid = 0;
     bufPos = 0;
     if (cephPos < 0) {
       cephPos = oldPos;
       throw new IOException("Ceph failed to seek to new position!");
+    }
+    
+    if (talkerDebug){
+      LOG.info("[talker debug]: seek end, fd " + fileHandle + ", target pos " + targetPos 
+        + ", new ceph pos " + cephPos);
     }
   }
 
@@ -198,8 +222,11 @@ public class CephInputStream extends FSInputStream {
           "CephInputStream.read: cannot read " + len + " bytes from fd "
           + fileHandle + ": current position is " + getPos()
           + " and file length is " + fileLength);
-				
       return -1;
+    }
+
+    if (talkerDebug){
+      LOG.info("[talker debug]: read begin, fd " + fileHandle + ", offset " + off + ", len " + len);
     }
 
     int totalRead = 0;
@@ -230,6 +257,10 @@ public class CephInputStream extends FSInputStream {
       totalRead += read;
     } while (len > 0 && fillBuffer());
 
+    if (talkerDebug){
+      LOG.info("[talker debug]: read end, fd " + fileHandle + ", offset " + off + ", len " + len);
+    }
+
     LOG.trace(
         "CephInputStream.read: Reading " + initialLen + " bytes from fd "
         + fileHandle + ": succeeded in reading " + totalRead + " bytes");
@@ -242,6 +273,11 @@ public class CephInputStream extends FSInputStream {
   @Override
   public void close() throws IOException {
     LOG.trace("CephOutputStream.close:enter");
+
+    if (talkerDebug){
+      LOG.info("[talker debug]: close");
+    }
+    
     if (!closed) {
       ceph.close(fileHandle);
 

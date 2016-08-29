@@ -68,7 +68,7 @@ public class CephOutputStream extends OutputStream
     ceph = cephfs;
     fileHandle = fh;
     closed = false;
-    buffer = new byte[1<<21];
+    buffer = new byte[2<<21];
     talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
                            CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
     if (talkerDebug)
