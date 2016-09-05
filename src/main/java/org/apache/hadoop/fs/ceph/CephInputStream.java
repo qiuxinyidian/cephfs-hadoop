@@ -219,7 +219,8 @@ public class CephInputStream extends FSInputStream {
       read = Math.min(len, bufValid - bufPos);
 	  if (seekOffset >= 2097152 || seekOffset <= -2097152)
 	  {
-		  bufValid = ceph.read(fileHandle, buf, off, len);
+		  bufValid = ceph.read(fileHandle, buffer, len, -1);
+		  System.arraycopy(buffer, 0, buf, off, len);
 		  if (talkerDebug)
 			LOG.info("[InputStream Multiget]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
 		  return len;
