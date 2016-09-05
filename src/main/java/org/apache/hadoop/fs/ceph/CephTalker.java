@@ -413,6 +413,10 @@ class CephTalker extends CephFsProto {
   long lseek(int fd, long offset, int whence) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: lseek, fd " + fd + ", offset " + offset + ", whence " + whence);
+    if (talkerStack)
+    {
+      call_stack("lseek function");
+    }
     return mount.lseek(fd, offset, whence);
   }
 

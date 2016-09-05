@@ -49,6 +49,7 @@ public class CephInputStream extends FSInputStream {
   private int bufPos = 0;
   private int bufValid = 0;
   private long cephPos = 0;
+  private long seekOffset = 0;
 
   /**
    * Create a new CephInputStream.
@@ -129,6 +130,13 @@ public class CephInputStream extends FSInputStream {
     long oldPos = cephPos;
 
     cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
+	if (seekOffset == 0)
+	{
+		seekOffset = targetPos;
+		seekOffset = targetPos - seekOffset;
+	}
+	else 
+		seekOffset = targetPos - seekOffset;
     bufValid = 0;
     bufPos = 0;
     if (cephPos < 0) {
@@ -208,6 +216,11 @@ public class CephInputStream extends FSInputStream {
 
     do {
       read = Math.min(len, bufValid - bufPos);
+	  if (seekOffset >= 2097152 || seekOffset <= -2097152)
+	  {
+		  bufValid = ceph.read(fileHandle, buf, off, len);
+		  return len;
+	  }
       try {
         System.arraycopy(buffer, bufPos, buf, off, read);
       } catch (IndexOutOfBoundsException ie) {
