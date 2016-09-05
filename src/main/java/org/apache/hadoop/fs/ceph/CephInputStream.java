@@ -50,7 +50,8 @@ public class CephInputStream extends FSInputStream {
   private int bufValid = 0;
   private long cephPos = 0;
   private long seekOffset = 0;
-  private long seekPosition = 0;
+  private long lastPosition = 0;
+  private boolean talkerDebug;
 
   /**
    * Create a new CephInputStream.
@@ -68,6 +69,10 @@ public class CephInputStream extends FSInputStream {
     closed = false;
     ceph = cephfs;
     buffer = new byte[1<<21];
+    talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
+                           CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: initialize, coff " + conf.toString()); 
     LOG.debug(
         "CephInputStream constructor: initializing stream with fh " + fh
         + " and file length " + flength);
@@ -131,16 +136,8 @@ public class CephInputStream extends FSInputStream {
     long oldPos = cephPos;
 
     cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
-	if (seekOffset == 0)
-	{
-		seekOffset = targetPos;
-		seekPosition = targetPos;
-	}
-	else
-	{
-		seekOffset = targetPos - seekPosition;
-		seekPosition = targetPos;
-	}	
+	seekOffset = targetPos - lastPosition;
+	lastPosition = targetPos;
     bufValid = 0;
     bufPos = 0;
     if (cephPos < 0) {
@@ -223,13 +220,15 @@ public class CephInputStream extends FSInputStream {
 	  if (seekOffset >= 2097152 || seekOffset <= -2097152)
 	  {
 		  bufValid = ceph.read(fileHandle, buf, off, len);
-          LOG.info("[InputStream Multiget]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
+		  if (talkerDebug)
+			LOG.info("[InputStream Multiget]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
 		  return len;
 	  }
       try {
         System.arraycopy(buffer, bufPos, buf, off, read);
-		seekPosition += read;
-        LOG.info("[InputStream Scan]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
+		lastPosition += read;
+        if (talkerDebug)
+			LOG.info("[InputStream Scan]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
             "CephInputStream.read: Indices out of bounds:" + "read length is "
