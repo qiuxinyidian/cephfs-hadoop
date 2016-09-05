@@ -50,6 +50,7 @@ public class CephInputStream extends FSInputStream {
   private int bufValid = 0;
   private long cephPos = 0;
   private long seekOffset = 0;
+  private long seekPosition = 0;
 
   /**
    * Create a new CephInputStream.
@@ -133,10 +134,13 @@ public class CephInputStream extends FSInputStream {
 	if (seekOffset == 0)
 	{
 		seekOffset = targetPos;
-		seekOffset = targetPos - seekOffset;
+		seekPosition = targetPos;
 	}
-	else 
-		seekOffset = targetPos - seekOffset;
+	else
+	{
+		seekOffset = targetPos - seekPosition;
+		seekPosition = targetPos;
+	}	
     bufValid = 0;
     bufPos = 0;
     if (cephPos < 0) {
@@ -219,10 +223,13 @@ public class CephInputStream extends FSInputStream {
 	  if (seekOffset >= 2097152 || seekOffset <= -2097152)
 	  {
 		  bufValid = ceph.read(fileHandle, buf, off, len);
+          LOG.info("[InputStream Multiget]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
 		  return len;
 	  }
       try {
         System.arraycopy(buffer, bufPos, buf, off, read);
+		seekPosition += read;
+        LOG.info("[InputStream Scan]: lseek, fd " + fileHandle + ", offset " + off + ", len " + len);
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
             "CephInputStream.read: Indices out of bounds:" + "read length is "
