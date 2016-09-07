@@ -48,9 +48,13 @@ public class CephInputStream extends FSInputStream {
   private CephFsProto ceph;
 
   private byte[] buffer;
-  private int bufPos = 0;
-  private int bufValid = 0;
-  private long cephPos = 0;
+  
+  private long lastReadTime = 0;
+  private int lastPos = 0;
+  private long bufferStartPos = 0;
+  private long currentPos = 0;
+  private long bufferEndPos = 0;
+  private long bufferTime = 0;
 
   /**
    * Create a new CephInputStream.
@@ -90,35 +94,30 @@ public class CephInputStream extends FSInputStream {
     }
   }
 
-  private synchronized boolean fillBuffer() throws IOException {
-    if (talkerDebug) {
-      LOG.info("[talker debug]: ceph read begin, fd " + fileHandle + ", ceph pos " + cephPos); 
-    }
-    
-    bufValid = ceph.read(fileHandle, buffer, buffer.length, -1);
-    bufPos = 0;
-    if (bufValid < 0) {
-      int err = bufValid;
-
-      bufValid = 0;
+  private synchronized int fillBuffer(int len) throws IOException {
+    int readLen = Math.min(buffer.length, len);
+    int ret = 0;
+    ret = ceph.read(fileHandle, buffer, readLen, -1);
+    if (ret < 0) {
+      int err = ret;
+      bufferStartPos = bufferEndPos = currentPos;
       // attempt to reset to old position. If it fails, too bad.
-      ceph.lseek(fileHandle, cephPos, CephMount.SEEK_SET);
+      ceph.lseek(fileHandle, currentPos, CephMount.SEEK_SET);
       throw new IOException("Failed to fill read buffer! Error code:" + err);
     }
     
-    cephPos += bufValid;
-    if (talkerDebug) {
-      LOG.info("[talker debug]: ceph read end, fd " + fileHandle + ", ceph pos " + cephPos); 
-    }
+    bufferStartPos = currentPos;
+    bufferEndPos += ret;
+    bufferTime = System.getTimeInMillis();
     
-    return (bufValid != 0);
+    return ret;
   }
 
   /*
    * Get the current position of the stream.
    */
   public synchronized long getPos() throws IOException {
-    return cephPos - bufValid + bufPos;
+    return currentPos;
   }
 
   /**
@@ -140,18 +139,15 @@ public class CephInputStream extends FSInputStream {
           "CephInputStream.seek: failed seek to position " + targetPos
           + " on fd " + fileHandle + ": Cannot seek after EOF " + fileLength);
     }
-    long oldPos = cephPos;
 
     if (talkerDebug){
       LOG.info("[talker debug]: seek begin, fd " + fileHandle+ ", target pos " + targetPos 
         + ", old ceph pos " + oldPos);
     }
 
-    cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
-    bufValid = 0;
-    bufPos = 0;
-    if (cephPos < 0) {
-      cephPos = oldPos;
+    currentPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
+    if (currentPos < 0) {
+      currentPos = lastPos;
       throw new IOException("Ceph failed to seek to new position!");
     }
     
@@ -201,7 +197,7 @@ public class CephInputStream extends FSInputStream {
    * @param buf the byte array to read into.
    * @param off the offset to start at in the file
    * @param len the number of bytes to read
-   * @return 0 if successful, otherwise an error code.
+   * @return actual number of bytes read
    * @throws IOException on bad input.
    */
   @Override
@@ -215,7 +211,7 @@ public class CephInputStream extends FSInputStream {
           "CephInputStream.read: cannot read " + len + " bytes from fd "
           + fileHandle + ": stream closed");
     }
-			
+
     // ensure we're not past the end of the file
     if (getPos() >= fileLength) {
       LOG.debug(
@@ -230,42 +226,131 @@ public class CephInputStream extends FSInputStream {
     }
 
     int totalRead = 0;
-    int initialLen = len;
-    int read;
+    // random read ?
+    long posOffset = currentPos - lastPos;
+    if (Math.abs(currentPos - lastPos) > 208712) {
+      totalRead = randomRead(buf, off, len); 
+    }
+    else {
+      totalRead = seqRead(buf, off, len);
+    }
 
+    lastPos = currentPos;
+
+    if (talkerDebug){
+      LOG.info("[talker debug]: read end, fd " + fileHandle + ", offset " + off + ", len " + len);
+    }
+
+    return totalRead;
+  }
+
+  public synchronized int randomRead(byte buf[], int off, int len) {
+    if (talkerDebug)
+      LOG.info("[InputStream]: random read begin, fd " + fileHandle + ", off " + off + ", len " + len);
+
+    int ret = 0;
+    int totalRead = 0;
     do {
-      read = Math.min(len, bufValid - bufPos);
+      ret = fillBuffer(len);
+      if (ret < 0) {
+        // assert
+        throw new IOException("CephInputStream.randomRead: assert " + ret);
+      }
+
+      if (ret == 0) {
+        // read end of file
+        goto out;
+      }
+
       try {
-        System.arraycopy(buffer, bufPos, buf, off, read);
+        System.arraycopy(buffer, 0, buf, totalRead, ret);
+        currentPos += ret;
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
-            "CephInputStream.read: Indices out of bounds:" + "read length is "
-            + len + ", buffer offset is " + off + ", and buffer size is "
-            + buf.length);
+            "CephInputStream.randomRead: Indices out of bounds:" + "read length is "
+            + len + ", buffer offset is " + totalRead);
       } catch (ArrayStoreException ae) {
         throw new IOException(
             "Uh-oh, CephInputStream failed to do an array"
                 + "copy due to type mismatch...");
       } catch (NullPointerException ne) {
         throw new IOException(
-            "CephInputStream.read: cannot read " + len + "bytes from fd:"
+            "CephInputStream.randomRead: cannot read " + len + "bytes from fd:"
             + fileHandle + ": buf is null");
       }
-      bufPos += read;
-      len -= read;
-      off += read;
-      totalRead += read;
-    } while (len > 0 && fillBuffer());
+      
+      len -= ret;
+      totalRead += ret;
+    } while (len > 0);
 
-    if (talkerDebug){
-      LOG.info("[talker debug]: read end, fd " + fileHandle + ", offset " + off + ", len " + len);
-    }
-
-    LOG.trace(
-        "CephInputStream.read: Reading " + initialLen + " bytes from fd "
-        + fileHandle + ": succeeded in reading " + totalRead + " bytes");
+out:
+    if (talkerDebug)
+      LOG.info("[InputStream]: random read end, fd " + fileHandle + ", off " + off + ", len " + len);
+    
     return totalRead;
   }
+  
+  public synchronized int seqRead(byte buf[], int off, int len) {
+    if (talkerDebug)
+      LOG.info("[Inputstream]: seq read begin, fd " + fileHandle + ", off " + off + ", len " + len);
+
+    int totalRead = 0;
+
+    long nowTime = System.getTimeInMillis();
+    
+    // read buffer valid ?
+    if ((Math.abs(nowTime - bufferTime) >= 1000)
+         || (currentPos < bufferStartPos || currentPos >= bufferEndPos)) {
+      // invalid
+      bufferStartPos = bufferEndPos = currentPos;
+    }
+    
+    do {
+      int read_len = Math.min(len, bufferEndPos - currentPos);
+      try {
+        // read from buffer
+        System.arraycopy(buffer, currentPos - bufferStartPos, buf, totalRead, read_len);
+        currentPos += read_len;
+      } catch (IndexOutOfBoundsException ie) {
+        throw new IOException(
+            "CephInputStream.seqRead: Indices out of bounds:" + "read length is "
+            + len + ", buffer offset is " + totalRead);
+      } catch (ArrayStoreException ae) {
+        throw new IOException(
+            "Uh-oh, CephInputStream failed to do an array"
+                + "copy due to type mismatch...");
+      } catch (NullPointerException ne) {
+        throw new IOException(
+            "CephInputStream.seqRead: cannot read " + len + "bytes from fd:"
+            + fileHandle + ": buf is null");
+      }
+
+      len -= read_len;
+      totalRead += read_len;
+      if (len < 0) {
+        throw new IOException("[Inputstream]: seq read");
+      }
+      
+      if (len == 0) {
+        goto out;
+      }
+
+      int ret = fillBuffer(buffer.length);
+      if (ret < 0) {
+        throw new IOException("CephInputStream.seqRead: fillBuffer ret " + ret);
+      if (ret == 0)
+        // read end of file
+        goto out;
+    } while(true);
+
+out:
+    if (talkerDebug)
+      LOG.info("[Inputstream]: seq read end, fd " + fileHandle + ", off " + off + ", len " + len);
+  
+  return totalRead;
+}
+
+
 
   /**
    * Close the CephInputStream and release the associated filehandle.
