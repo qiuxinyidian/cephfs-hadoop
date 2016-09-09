@@ -49,8 +49,7 @@ public class CephInputStream extends FSInputStream {
 
   private byte[] buffer;
   
-  private long lastReadTime = 0;
-  private int lastPos = 0;
+  private long lastPos = 0;
   private long bufferStartPos = 0;
   private long currentPos = 0;
   private long bufferEndPos = 0;
@@ -71,7 +70,7 @@ public class CephInputStream extends FSInputStream {
     fileHandle = fh;
     closed = false;
     ceph = cephfs;
-    buffer = new byte[1<<21];
+    buffer = new byte[1<<22];
 
     talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
                        CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
@@ -94,21 +93,29 @@ public class CephInputStream extends FSInputStream {
     }
   }
 
-  private synchronized int fillBuffer(int len) throws IOException {
+  private synchronized int fillBuffer(int len, long offset) throws IOException {
+    LOG.info("[InputStream]: fill buffer, offset " + offset + ", len " + len);
+
+    if (offset > 0)
+    {
+        seek(offset);
+    }
+
     int readLen = Math.min(buffer.length, len);
     int ret = 0;
     ret = ceph.read(fileHandle, buffer, readLen, -1);
     if (ret < 0) {
       int err = ret;
-      bufferStartPos = bufferEndPos = currentPos;
+      bufferStartPos = currentPos;
+      bufferEndPos = currentPos;
       // attempt to reset to old position. If it fails, too bad.
       ceph.lseek(fileHandle, currentPos, CephMount.SEEK_SET);
       throw new IOException("Failed to fill read buffer! Error code:" + err);
     }
     
     bufferStartPos = currentPos;
-    bufferEndPos += ret;
-    bufferTime = System.getTimeInMillis();
+    bufferEndPos = bufferStartPos + ret;
+    bufferTime = System.currentTimeMillis();
     
     return ret;
   }
@@ -142,7 +149,7 @@ public class CephInputStream extends FSInputStream {
 
     if (talkerDebug){
       LOG.info("[talker debug]: seek begin, fd " + fileHandle+ ", target pos " + targetPos 
-        + ", old ceph pos " + oldPos);
+        + ", old ceph pos " + lastPos);
     }
 
     currentPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
@@ -153,7 +160,7 @@ public class CephInputStream extends FSInputStream {
     
     if (talkerDebug){
       LOG.info("[talker debug]: seek end, fd " + fileHandle + ", target pos " + targetPos 
-        + ", new ceph pos " + cephPos);
+        + ", and current pos " + currentPos);
     }
   }
 
@@ -228,7 +235,7 @@ public class CephInputStream extends FSInputStream {
     int totalRead = 0;
     // random read ?
     long posOffset = currentPos - lastPos;
-    if (Math.abs(currentPos - lastPos) > 208712) {
+    if (Math.abs(currentPos - lastPos) > 2097152) {
       totalRead = randomRead(buf, off, len); 
     }
     else {
@@ -244,14 +251,15 @@ public class CephInputStream extends FSInputStream {
     return totalRead;
   }
 
-  public synchronized int randomRead(byte buf[], int off, int len) {
+  public synchronized int randomRead(byte buf[], int off, int len) throws IOException {
     if (talkerDebug)
-      LOG.info("[InputStream]: random read begin, fd " + fileHandle + ", off " + off + ", len " + len);
+      LOG.info("[InputStream]: random read begin, fd " + fileHandle + ", off " + off + ", len " + len + ", bufferStartPos " + bufferStartPos + ", currentPos " + currentPos
+              + ", bufferEndPos " + bufferEndPos);
 
     int ret = 0;
     int totalRead = 0;
     do {
-      ret = fillBuffer(len);
+      ret = fillBuffer(len, -1);
       if (ret < 0) {
         // assert
         throw new IOException("CephInputStream.randomRead: assert " + ret);
@@ -259,11 +267,11 @@ public class CephInputStream extends FSInputStream {
 
       if (ret == 0) {
         // read end of file
-        goto out;
+        break;
       }
 
       try {
-        System.arraycopy(buffer, 0, buf, totalRead, ret);
+        System.arraycopy(buffer, 0, buf, totalRead + off, ret);
         currentPos += ret;
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
@@ -283,33 +291,37 @@ public class CephInputStream extends FSInputStream {
       totalRead += ret;
     } while (len > 0);
 
-out:
-    if (talkerDebug)
-      LOG.info("[InputStream]: random read end, fd " + fileHandle + ", off " + off + ", len " + len);
+    LOG.info("[InputStream]: random read end, fd " + fileHandle + ", off " + off + ", len " + len + ", bufferStartPos " + bufferStartPos + ", currentPos " + currentPos
+            + ", bufferEndPos " + bufferEndPos);
     
     return totalRead;
   }
   
-  public synchronized int seqRead(byte buf[], int off, int len) {
+  public synchronized int seqRead(byte buf[], int off, int len) throws IOException {
     if (talkerDebug)
-      LOG.info("[Inputstream]: seq read begin, fd " + fileHandle + ", off " + off + ", len " + len);
+      LOG.info("[Inputstream]: seq read begin, fd " + fileHandle + ", off " + off + ", len " + len + ", bufferStartPos " + bufferStartPos + ", currentPos " +
+              currentPos + ", bufferEndPos " + bufferEndPos);
 
     int totalRead = 0;
 
-    long nowTime = System.getTimeInMillis();
+    long nowTime = System.currentTimeMillis();
     
     // read buffer valid ?
-    if ((Math.abs(nowTime - bufferTime) >= 1000)
-         || (currentPos < bufferStartPos || currentPos >= bufferEndPos)) {
-      // invalid
-      bufferStartPos = bufferEndPos = currentPos;
+    if ((Math.abs(nowTime - bufferTime)) >= 1000 || 
+        (currentPos < bufferStartPos || currentPos >= bufferEndPos)) {
+      if (talkerDebug)
+        LOG.info("[Inputstream]: seq read, read buffer invlid because timeout or not in read buffer, fd " + fileHandle + ", reset bufferStartPos " +
+                  bufferStartPos + ", currentPos " + currentPos + ", bufferEndPos " + bufferEndPos);
+      bufferStartPos = currentPos;
+      bufferEndPos = currentPos;
     }
     
     do {
-      int read_len = Math.min(len, bufferEndPos - currentPos);
+      int read_len = (int)Math.min(len, bufferEndPos - currentPos);
+      int bufferPos = (int)(currentPos - bufferStartPos);
       try {
         // read from buffer
-        System.arraycopy(buffer, currentPos - bufferStartPos, buf, totalRead, read_len);
+        System.arraycopy(buffer, bufferPos, buf, totalRead + off, read_len);
         currentPos += read_len;
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
@@ -332,25 +344,28 @@ out:
       }
       
       if (len == 0) {
-        goto out;
+        break;
       }
 
-      int ret = fillBuffer(buffer.length);
+      int ret = fillBuffer(buffer.length, currentPos);
       if (ret < 0) {
         throw new IOException("CephInputStream.seqRead: fillBuffer ret " + ret);
+      }
       if (ret == 0)
         // read end of file
-        goto out;
+        break;
+
+      if (talkerDebug)
+        LOG.info("[Inputstream]: seq read, fd " + fileHandle + ", after fill buffer, bufferStartPos " +
+                  bufferStartPos + ", currentPos " + currentPos + ", bufferEndPos " + bufferEndPos);
     } while(true);
 
-out:
     if (talkerDebug)
-      LOG.info("[Inputstream]: seq read end, fd " + fileHandle + ", off " + off + ", len " + len);
+      LOG.info("[Inputstream]: seq read end, fd " + fileHandle + ", off " + off + ", len " + len + ", bufferStartPos " + bufferStartPos + ", currentPos " +
+                currentPos + ", bufferEndPos " + bufferEndPos);
   
-  return totalRead;
-}
-
-
+    return totalRead;
+  }
 
   /**
    * Close the CephInputStream and release the associated filehandle.
