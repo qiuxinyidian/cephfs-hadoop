@@ -106,7 +106,12 @@ class CephTalker extends CephFsProto {
       mount.conf_set("keyring", keyring);
 
     /* set hadoop root user */
-    mount.conf_set("client_extra_root_users", "true");
+    try
+    {
+      mount.conf_set("client_extra_root_users", "true");
+    }
+    catch (Exception e)
+    {}
 
     /* Set monitor */
     String mon_addr = null;
@@ -171,10 +176,15 @@ class CephTalker extends CephFsProto {
     mount.localize_reads(localizeReads);
 
     /* set client_permissions */
-    String ceph_client_permissions = conf.get(
-        CephConfigKeys.CEPH_CLIENT_PERMISSIONS_KEY,
-        CephConfigKeys.CEPH_CLIENT_PERMISSIONS_DEFAULT);
-    mount.conf_set("client_permissions", ceph_client_permissions);
+    try
+    {
+      String ceph_client_permissions = conf.get(
+          CephConfigKeys.CEPH_CLIENT_PERMISSIONS_KEY,
+          CephConfigKeys.CEPH_CLIENT_PERMISSIONS_DEFAULT);
+      mount.conf_set("client_permissions", ceph_client_permissions);
+    }
+    catch(Exception e)
+    {}
 
     mount.chdir("/");
   }
