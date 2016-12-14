@@ -123,7 +123,7 @@ public class CephFileSystem extends FileSystem {
     CephStat stat = new CephStat();
     ceph.fstat(fd, stat);
 
-    CephInputStream istream = new CephInputStream(getConf(), ceph, fd,
+    CephInputStream istream = new CephInputStream(path, getConf(), ceph, fd,
         stat.size, bufferSize);
     return new FSDataInputStream(istream);
   }

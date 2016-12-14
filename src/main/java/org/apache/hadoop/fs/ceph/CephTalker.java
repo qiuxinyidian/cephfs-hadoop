@@ -439,13 +439,21 @@ class CephTalker extends CephFsProto {
 
   int read(int fd, byte[] buf, long size, long offset) throws IOException {
     if (talkerDebug)
-      LOG.info("[talker debug]: read, fd " + fd + ", size " + size + ", offset " + offset);
+      LOG.info("[talker debug]: ceph read begin, fd " + fd + ", size " + size + ", offset " + offset);
+
+	long start = System.currentTimeMillis();
     
     if (talkerStack)
     {
       call_stack("read function");
     }
-    return (int)mount.read(fd, buf, size, offset);
+    
+    int ret = (int)mount.read(fd, buf, size, offset);
+
+	long end = System.currentTimeMillis();
+    if (talkerDebug)
+      LOG.info("[talker debug]: ceph read end, fd " + fd + ", size " + size + ", offset " + offset + ", cost " + (end - start));
+	return ret;
   }
 
   String get_file_pool_name(int fd) {

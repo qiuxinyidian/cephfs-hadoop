@@ -23,6 +23,8 @@ package org.apache.hadoop.fs.ceph;
 
 import java.io.IOException;
 
+import org.apache.hadoop.fs.Path;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -39,6 +41,8 @@ public class CephInputStream extends FSInputStream {
   private static final Log LOG = LogFactory.getLog(CephInputStream.class);
   private boolean closed;
 
+  private Path path;
+
   private int fileHandle;
 
   private long fileLength;
@@ -52,6 +56,13 @@ public class CephInputStream extends FSInputStream {
   private int bufValid = 0;
   private long cephPos = 0;
 
+  private String pathString(Path path) {
+		if (null == path) {
+			return "/";
+		}
+    return path.toUri().getPath();
+  }
+
   /**
    * Create a new CephInputStream.
    * @param conf The system configuration. Unused.
@@ -59,10 +70,11 @@ public class CephInputStream extends FSInputStream {
    * @param flength The current length of the file. If the length changes
    * you will need to close and re-open it to access the new data.
    */
-  public CephInputStream(Configuration conf, CephFsProto cephfs,
+  public CephInputStream(Path p, Configuration conf, CephFsProto cephfs,
       int fh, long flength, int bufferSize) {
     // Whoever's calling the constructor is responsible for doing the actual ceph_open
     // call and providing the file handle.
+    path = p;
     fileLength = flength;
     fileHandle = fh;
     closed = false;
@@ -91,10 +103,6 @@ public class CephInputStream extends FSInputStream {
   }
 
   private synchronized boolean fillBuffer() throws IOException {
-    if (talkerDebug) {
-      LOG.info("[talker debug]: ceph read begin, fd " + fileHandle + ", ceph pos " + cephPos); 
-    }
-    
     bufValid = ceph.read(fileHandle, buffer, buffer.length, -1);
     bufPos = 0;
     if (bufValid < 0) {
@@ -107,9 +115,6 @@ public class CephInputStream extends FSInputStream {
     }
     
     cephPos += bufValid;
-    if (talkerDebug) {
-      LOG.info("[talker debug]: ceph read end, fd " + fileHandle + ", ceph pos " + cephPos); 
-    }
     
     return (bufValid != 0);
   }
@@ -225,9 +230,11 @@ public class CephInputStream extends FSInputStream {
       return -1;
     }
 
-    if (talkerDebug){
-      LOG.info("[talker debug]: read begin, fd " + fileHandle + ", offset " + off + ", len " + len);
+    if (talkerDebug){ 
+      LOG.info("[talker debug]: read begin, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len);
     }
+
+	long start = System.currentTimeMillis();
 
     int totalRead = 0;
     int initialLen = len;
@@ -257,8 +264,10 @@ public class CephInputStream extends FSInputStream {
       totalRead += read;
     } while (len > 0 && fillBuffer());
 
+	long end = System.currentTimeMillis();
+
     if (talkerDebug){
-      LOG.info("[talker debug]: read end, fd " + fileHandle + ", offset " + off + ", len " + len);
+      LOG.info("[talker debug]: read end, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len + ", cost " + (end - start));
     }
 
     LOG.trace(
