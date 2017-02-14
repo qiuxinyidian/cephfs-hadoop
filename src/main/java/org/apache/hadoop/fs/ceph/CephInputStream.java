@@ -137,7 +137,7 @@ public class CephInputStream extends FSInputStream {
 
     cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
     if (cephPos < 0) {
-      int err = cephPos;
+      long err = cephPos;
       cephPos = oldPos;
       throw new IOException("Ceph failed to seek to new position! Error code: " + err);
     }
@@ -218,6 +218,7 @@ public class CephInputStream extends FSInputStream {
 
 	  long start = System.currentTimeMillis();
 
+	  int initialLen = len;
     int totalRead = 0;
 
     while (len > 0) {
