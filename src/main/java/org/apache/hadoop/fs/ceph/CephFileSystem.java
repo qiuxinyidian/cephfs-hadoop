@@ -161,7 +161,7 @@ public class CephFileSystem extends FileSystem {
       progress.progress();
     }
 
-    CephOutputStream ostream = new CephOutputStream(getConf(), ceph, fd,
+    CephOutputStream ostream = new CephOutputStream(path, getConf(), ceph, fd,
         bufferSize);
     return new FSDataOutputStream(ostream, statistics);
   }

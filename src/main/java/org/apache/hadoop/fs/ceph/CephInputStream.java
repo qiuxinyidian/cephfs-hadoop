@@ -131,7 +131,7 @@ public class CephInputStream extends FSInputStream {
     long oldPos = cephPos;
 
     if (talkerDebug){
-      LOG.info("[talker debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos 
+      LOG.info("[InputStream debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos 
         + ", old ceph pos " + oldPos);
     }
 
@@ -143,7 +143,7 @@ public class CephInputStream extends FSInputStream {
     }
     
     if (talkerDebug){
-      LOG.info("[talker debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos 
+      LOG.info("[InputStream debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos 
         + ", new ceph pos " + cephPos);
     }
   }
@@ -213,7 +213,7 @@ public class CephInputStream extends FSInputStream {
     }
 
     if (talkerDebug){ 
-      LOG.info("[talker debug]: read begin, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len);
+      LOG.info("[InputStream debug]: read begin, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len);
     }
 
 	  long start = System.currentTimeMillis();
@@ -262,7 +262,7 @@ public class CephInputStream extends FSInputStream {
 	  long end = System.currentTimeMillis();
 
     if (talkerDebug){
-      LOG.info("[talker debug]: read end, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len + ", cost " + (end - start));
+      LOG.info("[InputStream debug]: read end, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len + ", cost " + (end - start));
     }
 
     LOG.trace(
@@ -279,7 +279,7 @@ public class CephInputStream extends FSInputStream {
     LOG.trace("CephOutputStream.close:enter");
 
     if (talkerDebug){
-      LOG.info("[talker debug]: close");
+      LOG.info("[InputStream debug]: close, path " + pathString(path));
     }
     
     if (!closed) {

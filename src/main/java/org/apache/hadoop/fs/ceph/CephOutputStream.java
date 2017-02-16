@@ -33,6 +33,8 @@ import org.apache.hadoop.fs.Syncable;
 
 import com.ceph.fs.CephMount;
 
+import org.apache.hadoop.fs.Path;
+
 /**
  * <p>
  * An {@link OutputStream} for a CephFileSystem and corresponding
@@ -51,6 +53,8 @@ public class CephOutputStream extends OutputStream
 
   private CephFsProto ceph;
 
+  private Path path;
+
   private int fileHandle;
 
   private byte[] buffer;
@@ -63,16 +67,15 @@ public class CephOutputStream extends OutputStream
    * @param conf The FileSystem configuration.
    * @param fh The Ceph filehandle to connect to.
    */
-  public CephOutputStream(Configuration conf, CephFsProto cephfs,
+  public CephOutputStream(Path p, Configuration conf, CephFsProto cephfs,
       int fh, int bufferSize) {
+    path = p;
     ceph = cephfs;
     fileHandle = fh;
     closed = false;
     buffer = new byte[2<<21];
     talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
                            CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
-    if (talkerDebug)
-      LOG.info("[OutputStream debug]: initialize, coff " + conf.toString()); 
   }
 
   /**
@@ -86,6 +89,13 @@ public class CephOutputStream extends OutputStream
     } finally {
       super.finalize();
     }
+  }
+
+  private String pathString(Path path) {
+		if (null == path) {
+			return "/";
+		}
+    return path.toUri().getPath();
   }
 
   /**
@@ -175,27 +185,33 @@ public class CephOutputStream extends OutputStream
   @Override
   public void hflush() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hflush, fd " + fileHandle);
+      LOG.info("[OutputStream debug]: hflush, path " + pathString(path) + ", fd " + fileHandle);
     flushOrSync(false); 
   } 
 
   @Override
   public void hsync() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hsync start, fd " + fileHandle);
+      LOG.info("[OutputStream debug]: hsync start, path " + pathString(path) + ", fd " + fileHandle);
+    
     flushOrSync(true);
 
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: hsync end, fd " + fileHandle);
+      LOG.info("[OutputStream debug]: hsync end, path " + pathString(path) + ", fd " + fileHandle);
   }
   
   @Override
   public synchronized void flush() throws IOException {
     if (talkerDebug)
-      LOG.info("[OutputStream debug]: flush, fd " + fileHandle);
+      LOG.info("[OutputStream debug]: flush start, path " + pathString(path) + ", fd " + fileHandle);
+    
     checkOpen();
     flushBuffer(); // buffer -> libcephfs
     //ceph.fsync(fileHandle); // libcephfs -> cluster
+    
+    if (talkerDebug)
+      LOG.info("[OutputStream debug]: flush end, path " + pathString(path) + ", fd " + fileHandle);
+
   }
   
   @Override

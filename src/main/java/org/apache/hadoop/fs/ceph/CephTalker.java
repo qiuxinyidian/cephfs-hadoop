@@ -65,8 +65,6 @@ class CephTalker extends CephFsProto {
   void initialize(URI uri, Configuration conf) throws IOException {
     talkerDebug = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_KEY,
                            CephConfigKeys.CEPH_TALKER_INTERFACE_DEBUG_DEFAULT);
-    if (talkerDebug)
-      LOG.info("[talker debug]: initialize, uri " + uri.toString() + ", coff " + conf.toString());
     
     talkerStack = conf.getBoolean(CephConfigKeys.CEPH_TALKER_INTERFACE_STACK_KEY,
                            CephConfigKeys.CEPH_TALKER_INTERFACE_STACK_DEFAULT);
@@ -421,14 +419,10 @@ class CephTalker extends CephFsProto {
   }
 
   long lseek(int fd, long offset, int whence) throws IOException {
-    if (talkerDebug)
-      LOG.info("[talker debug]: lseek, fd " + fd + ", offset " + offset + ", whence " + whence);
     return mount.lseek(fd, offset, whence);
   }
 
-  int write(int fd, byte[] buf, long size, long offset) throws IOException {
-    if (talkerDebug)
-      LOG.info("[talker debug]: write, fd " + fd + ", size " + size + ", offset " + offset);    
+  int write(int fd, byte[] buf, long size, long offset) throws IOException { 
     if (talkerStack)
     {
       call_stack("write function");
@@ -438,22 +432,13 @@ class CephTalker extends CephFsProto {
   }
 
   int read(int fd, byte[] buf, long size, long offset) throws IOException {
-    if (talkerDebug)
-      LOG.info("[talker debug]: ceph read begin, fd " + fd + ", size " + size + ", offset " + offset);
-
-	long start = System.currentTimeMillis();
-    
     if (talkerStack)
     {
       call_stack("read function");
     }
     
     int ret = (int)mount.read(fd, buf, size, offset);
-
-	long end = System.currentTimeMillis();
-    if (talkerDebug)
-      LOG.info("[talker debug]: ceph read end, fd " + fd + ", size " + size + ", offset " + offset + ", cost " + (end - start));
-	return ret;
+  	return ret;
   }
 
   String get_file_pool_name(int fd) {
