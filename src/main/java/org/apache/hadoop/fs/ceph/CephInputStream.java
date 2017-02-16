@@ -131,7 +131,7 @@ public class CephInputStream extends FSInputStream {
     long oldPos = cephPos;
 
     if (talkerDebug){
-      LOG.info("[talker debug]: seek begin, fd " + fileHandle+ ", target pos " + targetPos 
+      LOG.info("[talker debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos 
         + ", old ceph pos " + oldPos);
     }
 
@@ -143,7 +143,7 @@ public class CephInputStream extends FSInputStream {
     }
     
     if (talkerDebug){
-      LOG.info("[talker debug]: seek end, fd " + fileHandle + ", target pos " + targetPos 
+      LOG.info("[talker debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos 
         + ", new ceph pos " + cephPos);
     }
   }
