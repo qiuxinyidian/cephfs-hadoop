@@ -31,7 +31,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSInputStream;
 
 import com.ceph.fs.CephMount;
+import java.util.Random;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 /**
  * <p>
  * An {@link FSInputStream} for a CephFileSystem and corresponding
@@ -130,9 +133,9 @@ public class CephInputStream extends FSInputStream {
     }
     long oldPos = cephPos;
 
+
     if (talkerDebug){
-      LOG.info("[InputStream debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos 
-        + ", old ceph pos " + oldPos);
+      LOG.info("[InputStream debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos + ", old ceph pos " + oldPos);
     }
 
     cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
@@ -143,8 +146,7 @@ public class CephInputStream extends FSInputStream {
     }
     
     if (talkerDebug){
-      LOG.info("[InputStream debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos 
-        + ", new ceph pos " + cephPos);
+      LOG.info("[InputStream debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos);
     }
   }
 
@@ -212,32 +214,41 @@ public class CephInputStream extends FSInputStream {
       return -1;
     }
 
-    if (talkerDebug){ 
-      LOG.info("[InputStream debug]: read begin, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len);
+    if (talkerDebug) { 
+      LOG.info("[InputStream debug]: read begin, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len + 
+					  ", cephPos is " + cephPos + ", fileLength is " + fileLength);
     }
 
-	  long start = System.currentTimeMillis();
+	long start = System.currentTimeMillis();
 
-	  int initialLen = len;
+	int initialLen = len;
     int totalRead = 0;
 
-    while (len > 0) {
-      int read = Math.min(len, bufferSize);
+	boolean file_end = false;
+
+    while (len > 0 && !file_end) {
+      long read = Math.min(len, bufferSize);
 
       // read 
       int ret = ceph.read(fileHandle, buffer, read, -1);
-      if (ret != read){
-        int err = 0;
-        if (ret < 0)
-          err = ret;
+      if (ret < 0) {
         ceph.lseek(fileHandle, cephPos, CephMount.SEEK_SET);
-        throw new IOException("Failed to fill read buffer! Error code: " + err);
+		LOG.info("[InputStream info]: failed to fill read buffer! path: " + pathString(path) + ", current ceph pos: " + cephPos +
+				", read len " + len + ", try to read: " + read + ", but ret: " + ret);
+        throw new IOException("failed to fill read buffer! path: " + pathString(path) + ", current ceph pos: " + cephPos +
+				", read len " + len + ", try to read " + read + ", but ret: " + ret);
       }
-      cephPos += read;
+
+	  if (ret != read)	  {
+	  	// end of file
+		file_end = true;
+	  }
+
+      cephPos += ret;
 
       // copy
       try {
-        System.arraycopy(buffer, 0, buf, off, read);
+        System.arraycopy(buffer, 0, buf, off, ret);
       } catch (IndexOutOfBoundsException ie) {
         throw new IOException(
             "CephInputStream.read: Indices out of bounds:" + "read length is "
@@ -254,12 +265,12 @@ public class CephInputStream extends FSInputStream {
       }
 
       // update
-      off += read;
-      len -= read;
-      totalRead += read;
+      off += ret;
+      len -= ret;
+      totalRead += ret;
     }
 
-	  long end = System.currentTimeMillis();
+	long end = System.currentTimeMillis();
 
     if (talkerDebug){
       LOG.info("[InputStream debug]: read end, path " + pathString(path) + ", fd " + fileHandle + ", offset " + off + ", len " + len + ", cost " + (end - start));

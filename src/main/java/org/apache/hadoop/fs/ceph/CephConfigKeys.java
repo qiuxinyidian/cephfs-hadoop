@@ -39,7 +39,7 @@ public class CephConfigKeys extends CommonConfigurationKeys {
   public static final String CEPH_ROOT_DIR_DEFAULT = null;
 
   public static final String  CEPH_LOCALIZE_READS_KEY = "ceph.localize.reads";
-  public static final boolean CEPH_LOCALIZE_READS_DEFAULT = true;
+  public static final boolean CEPH_LOCALIZE_READS_DEFAULT = false;
 
   public static final String CEPH_DATA_POOLS_KEY = "ceph.data.pools";
   public static final String CEPH_DATA_POOLS_DEFAULT = null;
