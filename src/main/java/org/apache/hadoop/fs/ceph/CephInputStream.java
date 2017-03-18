@@ -57,7 +57,7 @@ public class CephInputStream extends FSInputStream {
   private byte[] buffer;
   private long cephPos = 0;
 
-  private int bufferSize = 1<<17;
+  private int bufferSize = 1<<20;
 
   private String pathString(Path path) {
 		if (null == path) {
@@ -74,7 +74,7 @@ public class CephInputStream extends FSInputStream {
    * you will need to close and re-open it to access the new data.
    */
   public CephInputStream(Path p, Configuration conf, CephFsProto cephfs,
-      int fh, long flength, int bufferSize) {
+      int fh, long flength, int bs) {
     // Whoever's calling the constructor is responsible for doing the actual ceph_open
     // call and providing the file handle.
     path = p;
@@ -239,9 +239,9 @@ public class CephInputStream extends FSInputStream {
 				", read len " + len + ", try to read " + read + ", but ret: " + ret);
       }
 
-	  if (ret != read)	  {
+	  if (ret != read) {
 	  	// end of file
-		file_end = true;
+		  file_end = true;
 	  }
 
       cephPos += ret;
