@@ -122,8 +122,9 @@ class CephTalker extends CephFsProto {
           CephConfigKeys.CEPH_MON_ADDR_KEY,
           CephConfigKeys.CEPH_MON_ADDR_DEFAULT);
     }
-    if (mon_addr != null)
-        mount.conf_set("mon_host", mon_addr);
+    //去掉设置，直接使用ceph.conf，直接高可用
+    //if (mon_addr != null)
+    //    mount.conf_set("mon_host", mon_addr);
 
     /*
      * Parse and set Ceph configuration options
