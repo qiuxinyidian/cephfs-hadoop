@@ -700,4 +700,8 @@ public class CephFileSystem extends FileSystem {
   public int getDefaultPort() {
     return 6789;
   }
+
+  public String getScheme() {
+    return "ceph";
+  }
 }
