@@ -477,7 +477,7 @@ class CephTalker extends CephFsProto {
 	String res = new String(buf);
 	String[] ret = res.split(",");
 	for (String iter : ret) {
-	  if (iter.split("=")[0] == value)
+	  if (iter.split("=")[0].equals(value))
 	  {
 		  return Long.parseLong(iter.split("=")[1]);
 	  }
