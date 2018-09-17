@@ -46,6 +46,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.XAttrSetFlag;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.fs.FsStatus;
 
@@ -302,6 +303,57 @@ public class CephFileSystem extends FileSystem {
     ceph.setattr(path, stat, mask);
   }
 
+  @Override
+  public void setXAttr(Path path, String name, byte[] value, EnumSet<XAttrSetFlag> flag) throws IOException {
+	path = makeAbsolute(path);
+	//"ceph" flag used just for test, change to "s3" instead
+	name = "ceph." + name;
+	int ret = ceph.setxattr(path, name, value, 1);
+	//exited? change operator to replace
+	if (ret == -17) {
+		ceph.setxattr(path, name, value, 2);
+	}
+  }
+  
+  @Override
+  public byte[] getXAttr(Path path, String name) throws IOException {
+	path = makeAbsolute(path);
+	//"ceph" flag used just for test, change to "s3" instead
+	name = "ceph." + name;
+	return ceph.getxattr(path, name);
+  }
+  
+  @Override
+  public void removeXAttr(Path path, String name) throws IOException {
+	path = makeAbsolute(path);
+	//"ceph" flag used just for test, change to "s3" instead
+	name = "ceph." + name;
+	ceph.removexattr(path, name);
+  }
+  
+  
+  public void setQuota(Path src, final long namespaceQuota, final long storagespaceQuota) throws IOException {
+	src = makeAbsolute(src);
+	ceph.setdirnumquota(src, namespaceQuota);
+	ceph.setdirsizequota(src, storagespaceQuota);
+  }
+  
+  public long getSpaceQuota(Path path) throws IOException {
+ 	 return ceph.getquota(path, "ceph.quota.max_bytes");
+  }
+  
+  public long getSpaceConsumed(Path path) throws IOException {
+	 return ceph.getconsumed(path, "ceph.quota.max_bytes.extend", "used_bytes");
+  }
+  
+  public long getNumQuota(Path path) throws IOException {
+ 	 return ceph.getquota(path, "ceph.quota.max_files");
+  }
+  
+  public long getNumConsumed(Path path) throws IOException {
+	 return ceph.getconsumed(path, "ceph.quota.max_files.extend", "used_files");
+  }
+  
   /**
    * Get data pools from configuration.
    *

@@ -50,6 +50,13 @@ abstract class CephFsProto {
   abstract void rmdir(Path path) throws IOException;
   abstract String[] listdir(Path path) throws IOException;
   abstract void setattr(Path path, CephStat stat, int mask) throws IOException;
+  abstract int setxattr(Path path, String name, byte[] value, int flag) throws IOException;
+  abstract byte[] getxattr(Path path, String name) throws IOException;
+  abstract void removexattr(Path path, String name) throws IOException;
+  abstract void setdirnumquota(Path src, final long namespaceQuota)  throws IOException;
+  abstract void setdirsizequota(Path src, final long storagespaceQuota)  throws IOException;
+  abstract long getquota(Path path, String name) throws IOException;
+  abstract long getconsumed(Path path, String name, String value) throws IOException;
   abstract void chmod(Path path, int mode) throws IOException;
   abstract void chown(Path path, String username, String groupname) throws IOException;
   abstract long lseek(int fd, long offset, int whence) throws IOException;

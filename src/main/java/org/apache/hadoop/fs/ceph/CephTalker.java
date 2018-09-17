@@ -402,9 +402,89 @@ class CephTalker extends CephFsProto {
   void setattr(Path path, CephStat stat, int mask) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: setattr, path " + pathString(path) + ", mask " + mask);
-    mount.setattr(pathString(path), stat, mask);
+	mount.setattr(pathString(path), stat, mask);
+  }
+  
+  int setxattr(Path path, String name, byte[] value, int flag) throws IOException {	   
+    if (talkerDebug)
+      LOG.info("[talker debug]: setxattr, path " + pathString(path) + ", name " + name);
+    int ret = mount.setxattr(pathString(path), name, value, value.length, flag);
+	return ret;
   }
 
+  byte[] getxattr(Path path, String name) throws IOException {	   
+    if (talkerDebug)
+      LOG.info("[talker debug]: getxattr, path " + pathString(path) + ", name " + name);
+    byte[] buf = new byte[1000];
+    mount.getxattr(pathString(path), name, buf);
+	return buf;
+  }
+  
+  void removexattr(Path path, String name) throws IOException {	   
+    if (talkerDebug)
+      LOG.info("[talker debug]: removexattr, path " + pathString(path) + ", name " + name);
+    mount.removexattr(pathString(path), name);
+  }
+  
+  public static void long2Byte(byte[] bb, long x) { 
+        bb[ 0] = (byte) (x >> 56); 
+        bb[ 1] = (byte) (x >> 48); 
+        bb[ 2] = (byte) (x >> 40); 
+        bb[ 3] = (byte) (x >> 32); 
+        bb[ 4] = (byte) (x >> 24); 
+        bb[ 5] = (byte) (x >> 16); 
+        bb[ 6] = (byte) (x >> 8); 
+        bb[ 7] = (byte) (x >> 0); 
+  } 
+  
+  public static long getLong(byte[] bb) { 
+       return ((((long) bb[ 0] & 0xff) << 56) 
+               | (((long) bb[ 1] & 0xff) << 48) 
+               | (((long) bb[ 2] & 0xff) << 40) 
+               | (((long) bb[ 3] & 0xff) << 32) 
+               | (((long) bb[ 4] & 0xff) << 24) 
+               | (((long) bb[ 5] & 0xff) << 16) 
+               | (((long) bb[ 6] & 0xff) << 8) | (((long) bb[ 7] & 0xff) << 0)); 
+  } 
+  
+  void setdirnumquota(Path src, final long namespaceQuota)  throws IOException { 
+    byte[] buf = new byte[8];
+    long2Byte(buf, namespaceQuota);
+	int ret = mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 1);
+	if (ret == -17) {
+		mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 2);
+	}
+  }
+  
+  void setdirsizequota(Path src, final long storagespaceQuota)  throws IOException { 
+    byte[] buf = new byte[8];
+    long2Byte(buf, storagespaceQuota);
+	int ret = mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 1);
+	if (ret == -17) {
+		mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 2);
+	}
+  }
+  
+  long getquota(Path path, String name) throws IOException {
+	byte[] buf = new byte[8];
+	mount.getxattr(pathString(path), name, buf);
+	return getLong(buf);	
+  }
+  
+  long getconsumed(Path path, String name, String value) throws IOException {
+	byte[] buf = new byte[100];
+	mount.getxattr(pathString(path), name, buf);
+	String res = new String(buf);
+	String[] ret = res.split(",");
+	for (String iter : ret) {
+	  if (iter.split("=")[0] == value)
+	  {
+		  return Long.parseLong(iter.split("=")[1]);
+	  }
+	}
+	return -5;	
+  }
+  
   void fsync(int fd) throws IOException {
     if (talkerDebug)
       LOG.info("[talker debug]: fsync, fd " + fd);
