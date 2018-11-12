@@ -307,8 +307,9 @@ public class CephFileSystem extends FileSystem {
   public void setXAttr(Path path, String name, byte[] value, EnumSet<XAttrSetFlag> flag) throws IOException {
 	path = makeAbsolute(path);
 	//"ceph" flag used just for test, change to "s3" instead
-	name = "ceph." + name;
+	name = "ceph." + name;	
 	int ret = ceph.setxattr(path, name, value, 1);
+	//`setQuota(path, 1111, 2222);
 	//exited? change operator to replace
 	if (ret == -17) {
 		ceph.setxattr(path, name, value, 2);
@@ -317,23 +318,26 @@ public class CephFileSystem extends FileSystem {
   
   @Override
   public byte[] getXAttr(Path path, String name) throws IOException {
-	path = makeAbsolute(path);
-	//"ceph" flag used just for test, change to "s3" instead
-	name = "ceph." + name;
-	return ceph.getxattr(path, name);
+	  path = makeAbsolute(path);
+	  //"ceph" flag used just for test, change to "s3" instead
+	  name = "ceph." + name;
+	  //long res = getSpaceQuota(path);
+	  //res = getSpaceConsumed(path);
+          //LOG.debug("getSpaceQuota = " + res);
+	  return ceph.getxattr(path, name);
   }
   
   @Override
   public void removeXAttr(Path path, String name) throws IOException {
-	path = makeAbsolute(path);
-	//"ceph" flag used just for test, change to "s3" instead
-	name = "ceph." + name;
-	ceph.removexattr(path, name);
+	  path = makeAbsolute(path);
+	  //"ceph" flag used just for test, change to "s3" instead
+	  name = "ceph." + name;
+	  ceph.removexattr(path, name);
   }
   
   
   public void setQuota(Path src, final long namespaceQuota, final long storagespaceQuota) throws IOException {
-	src = makeAbsolute(src);
+	//src = makeAbsolute(src);
 	ceph.setdirnumquota(src, namespaceQuota);
 	ceph.setdirsizequota(src, storagespaceQuota);
   }
@@ -352,6 +356,27 @@ public class CephFileSystem extends FileSystem {
   
   public long getNumConsumed(Path path) throws IOException {
 	 return ceph.getconsumed(path, "ceph.quota.max_files.extend", "used_files");
+  }
+
+  private String pathString(Path path) {
+		if (null == path) {
+			return "/";
+		}
+    return path.toUri().getPath();
+  }
+  @Override
+  public void concat(Path trg, Path [] psrcs) throws IOException {
+	String srcpath = ""; 
+	//trans psrcs to string split with $$$$ begin 
+	for(int i = 0; i < psrcs.length; i++) {
+	  Path path = makeAbsolute(psrcs[i]);
+	  srcpath = srcpath + pathString(path) + "$$$$";
+	  if (i == psrcs.length - 1) {
+	    srcpath = srcpath + pathString(psrcs[i]); 
+          }
+        }
+	//trans psrcs to string split with $$$$ end
+	ceph.concat(trg, srcpath);
   }
   
   /**

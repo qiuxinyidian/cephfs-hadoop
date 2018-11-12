@@ -407,7 +407,7 @@ class CephTalker extends CephFsProto {
   
   int setxattr(Path path, String name, byte[] value, int flag) throws IOException {	   
     if (talkerDebug)
-      LOG.info("[talker debug]: setxattr, path " + pathString(path) + ", name " + name);
+      LOG.info("[talker debug]: setxattr, path " + pathString(path) + ", name " + name + "val: " + value);
     int ret = mount.setxattr(pathString(path), name, value, value.length, flag);
 	return ret;
   }
@@ -425,6 +425,12 @@ class CephTalker extends CephFsProto {
       LOG.info("[talker debug]: removexattr, path " + pathString(path) + ", name " + name);
     mount.removexattr(pathString(path), name);
   }
+
+  void concat(Path path, String srcList) throws IOException {	   
+    if (talkerDebug)
+      LOG.info("[talker debug]: concat , target path " + pathString(path) + ", srclist" + srcList);
+    mount.concat(pathString(path), srcList);
+  }
   
   public static void long2Byte(byte[] bb, long x) { 
         bb[ 0] = (byte) (x >> 56); 
@@ -435,6 +441,7 @@ class CephTalker extends CephFsProto {
         bb[ 5] = (byte) (x >> 16); 
         bb[ 6] = (byte) (x >> 8); 
         bb[ 7] = (byte) (x >> 0); 
+       
   } 
   
   public static long getLong(byte[] bb) { 
@@ -448,33 +455,86 @@ class CephTalker extends CephFsProto {
   } 
   
   void setdirnumquota(Path src, final long namespaceQuota)  throws IOException { 
-    byte[] buf = new byte[8];
-    long2Byte(buf, namespaceQuota);
-	int ret = mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 1);
-	if (ret == -17) {
-		mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 2);
-	}
+    //byte[] buf = new byte[8];
+    //long2Byte(buf, namespaceQuota);
+    byte[] buf = Long.toString(namespaceQuota).getBytes();
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirnumquota, path " + pathString(src) + ", long " + namespaceQuota);
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirnumquota, path " + pathString(src) + ", string " + Long.toString(namespaceQuota));
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirnumquota, path " + pathString(src) + ", val " + buf);
+
+    int ret = mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 1);
+    if (ret == -17) {
+	mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 2);
+    }
   }
   
   void setdirsizequota(Path src, final long storagespaceQuota)  throws IOException { 
-    byte[] buf = new byte[8];
-    long2Byte(buf, storagespaceQuota);
-	int ret = mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 1);
-	if (ret == -17) {
-		mount.setxattr(pathString(src), "ceph.quota.max_files", buf, buf.length, 2);
-	}
+    //byte[] buf = new byte[8];
+    //long2Byte(buf, storagespaceQuota);
+    byte[] buf = Long.toString(storagespaceQuota).getBytes();
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirsizequota, path " + pathString(src) + ", long " + storagespaceQuota);
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirsizequota, path " + pathString(src) + ", string " + Long.toString(storagespaceQuota));
+    if (talkerDebug)
+      LOG.info("[talker debug]: setdirsizequota, path " + pathString(src) + ", val " + buf);
+
+    int ret = mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 1);
+    if (ret == -17) {
+	mount.setxattr(pathString(src), "ceph.quota.max_bytes", buf, buf.length, 2);
+    }
   }
   
   long getquota(Path path, String name) throws IOException {
-	byte[] buf = new byte[8];
-	mount.getxattr(pathString(path), name, buf);
-	return getLong(buf);	
+	byte[] buf = new byte[100];
+	long bufLength  =  0;
+        if (talkerDebug)
+          LOG.info("[talker debug]: getquota, path " + pathString(path) + ", name " + name);
+	try {
+	  bufLength = mount.getxattr(pathString(path), name, buf);
+	} catch (Exception e) {
+		return Integer.MAX_VALUE;
+	}
+	if (bufLength < 0) 	{
+	   throw new IOException();
+	}
+
+	byte[] result = new byte[(int)bufLength];
+	//copy buf data to result  
+	for (int i = 0; i < bufLength; i++) {
+	   result[i] = buf[i];
+	}
+ 	String res = new String(result);
+	if (res == null || res.length() <= 0){
+		return 0;
+	}
+	return Long.parseLong(res);
   }
   
   long getconsumed(Path path, String name, String value) throws IOException {
 	byte[] buf = new byte[100];
-	mount.getxattr(pathString(path), name, buf);
-	String res = new String(buf);
+	long attrret = 0;
+	try {
+		attrret = mount.getxattr(pathString(path), name, buf);
+	} catch (Exception e) {
+		return 0;
+	}
+	if (attrret < 0) 	{
+	   throw new IOException();
+	}
+	byte[] result = new byte[(int)attrret];
+	//copy buf data to 
+	for (int i = 0; i < attrret; i++) {
+	   result[i] = buf[i];
+	}
+
+	String res = new String(result);
+	if (res == null || res.length() <= 0){
+		return 0;
+	}
 	String[] ret = res.split(",");
 	for (String iter : ret) {
 	  if (iter.split("=")[0].equals(value))

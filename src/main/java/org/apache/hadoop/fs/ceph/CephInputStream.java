@@ -137,13 +137,16 @@ public class CephInputStream extends FSInputStream {
     if (talkerDebug){
       LOG.info("[InputStream debug]: seek begin, path " + pathString(path) + ", fd " + fileHandle+ ", target pos " + targetPos + ", old ceph pos " + oldPos);
     }
-
-    cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
-    if (cephPos < 0) {
+    try {
+      cephPos = ceph.lseek(fileHandle, targetPos, CephMount.SEEK_SET);
+    } catch (IOException e) {
+      if (talkerDebug){
+        LOG.info("[InputStream debug]: lseek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos + ", cephPos " + cephPos);
+      }
       long err = cephPos;
       cephPos = oldPos;
       throw new IOException("Ceph failed to seek to new position! Error code: " + err);
-    }
+    } 
     
     if (talkerDebug){
       LOG.info("[InputStream debug]: seek end, path " + pathString(path) + ", fd " + fileHandle + ", target pos " + targetPos);
