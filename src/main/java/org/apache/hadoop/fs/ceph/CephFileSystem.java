@@ -58,13 +58,14 @@ import com.ceph.fs.CephStatVFS;
 import com.ceph.crush.Bucket;
 import com.ceph.fs.CephFileExtent;
 
+import org.apache.hadoop.fs.StreamCapabilities;
 
 /**
  * Known Issues:
  *
  *   1. Per-file replication and block size are ignored.
  */
-public class CephFileSystem extends FileSystem {
+public class CephFileSystem extends FileSystem implements StreamCapabilities {
   private static final Log LOG = LogFactory.getLog(CephFileSystem.class);
   private URI uri;
 
@@ -72,6 +73,7 @@ public class CephFileSystem extends FileSystem {
   private CephFsProto ceph = null;
   private static final int CEPH_STRIPE_COUNT = 1;
   private TreeMap<Integer, String> datapools = null;
+  private static final String DEFAULT_RACK = "/default-rack";
 
   /**
    * Create a new CephFileSystem.
@@ -780,5 +782,18 @@ public class CephFileSystem extends FileSystem {
 
   public String getScheme() {
     return "ceph";
+  }
+
+  public boolean hasCapability(String s) {
+
+    // for debug
+    LOG.debug("CephFileSystem stream capability for " + s);
+
+    if (s.equalsIgnoreCase(StreamCapabilities.HFLUSH))
+      return true;
+    if (s.equalsIgnoreCase(StreamCapabilities.HSYNC))
+      return true;
+
+    return false;
   }
 }

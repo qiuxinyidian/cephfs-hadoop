@@ -35,12 +35,15 @@ import java.util.Random;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+
+import org.apache.hadoop.fs.StreamCapabilities;
+
 /**
  * <p>
  * An {@link FSInputStream} for a CephFileSystem and corresponding
  * Ceph instance.
  */
-public class CephInputStream extends FSInputStream {
+public class CephInputStream extends FSInputStream implements StreamCapabilities {
   private static final Log LOG = LogFactory.getLog(CephInputStream.class);
   private boolean closed;
 
@@ -302,5 +305,18 @@ public class CephInputStream extends FSInputStream {
       closed = true;
       LOG.trace("CephOutputStream.close:exit");
     }
+  }
+
+  public boolean hasCapability(String s) {
+
+    // for debug
+    LOG.debug("CephInputStream stream hasCapability for " + s);
+
+    if (s.equalsIgnoreCase(StreamCapabilities.HFLUSH))
+      return true;
+    if (s.equalsIgnoreCase(StreamCapabilities.HSYNC))
+      return true;
+
+    return false;
   }
 }

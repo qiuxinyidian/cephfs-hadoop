@@ -78,4 +78,6 @@ abstract class CephFsProto {
   abstract void fsync(int fd) throws IOException;
   abstract String getUsername(int uid) throws IOException;
   abstract String getGroupname(int gid) throws IOException;
+  // added by lizhipeng 2020-6-5
+  abstract void concat(Path trg, String srcpath) throws IOException;
 }

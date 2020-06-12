@@ -34,6 +34,7 @@ import org.apache.hadoop.fs.Syncable;
 import com.ceph.fs.CephMount;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.StreamCapabilities;
 
 /**
  * <p>
@@ -47,7 +48,7 @@ import org.apache.hadoop.fs.Path;
  *  much more.
  */
 public class CephOutputStream extends OutputStream 
-	implements Syncable {
+	implements Syncable, StreamCapabilities {
   private static final Log LOG = LogFactory.getLog(CephOutputStream.class);
   private boolean closed;
 
@@ -228,5 +229,16 @@ public class CephOutputStream extends OutputStream
     hsync();
     ceph.close(fileHandle);
     closed = true;
+  }
+  public boolean hasCapability(String s) {
+    // for debug
+    LOG.debug("CephOutputStream stream capability for " + s);
+
+    if (s.equalsIgnoreCase(StreamCapabilities.HFLUSH))
+      return true;
+    if (s.equalsIgnoreCase(StreamCapabilities.HSYNC))
+      return true;
+
+    return false;
   }
 }
