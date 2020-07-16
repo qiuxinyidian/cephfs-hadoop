@@ -72,6 +72,7 @@ public class CephFileSystem extends FileSystem {
   private CephFsProto ceph = null;
   private static final int CEPH_STRIPE_COUNT = 1;
   private TreeMap<Integer, String> datapools = null;
+  private static final String DEFAULT_RACK = "/default-rack";
 
   /**
    * Create a new CephFileSystem.
@@ -666,8 +667,10 @@ public class CephFileSystem extends FileSystem {
         Bucket[] path = ceph.get_osd_crush_location(osds[i]);
         for (Bucket bucket : path) {
           String type = bucket.getType();
-          if (type.compareTo("host") == 0)
+          if (type.compareTo("host") == 0) {
             hosts[i] = bucket.getName();
+            racks[i] = DEFAULT_RACK;   //for hive tez rack null exception,lizhipeng 2020-6-10
+          }
           else if (type.compareTo("rack") == 0)
             racks[i] = bucket.getName();
         }
